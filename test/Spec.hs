@@ -19,15 +19,18 @@ genExprs g = let (e, g1) = genExpr g in let es = genExprs g1 in e : es
 instance Arbitrary Expr where
     arbitrary = sized arbitrary'
         where
-        arbitrary' 0 = pure $ Var "x_1"
+        arbitrary' 0 = Var <$> (show <$> (arbitrary :: Gen Int))
         arbitrary' n =
             oneof [ 
                   (:|) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
                 , (:&) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
-                -- , (:=>) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
-                -- , (:<=>) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
+                , (:=>) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
+                , (:<=>) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
                 , Not <$> arbitrary
                 ]
+
+-- instance Arbitrary String where
+--     arbitrary = pure "11"
 
 
 examples = [
@@ -36,13 +39,19 @@ examples = [
     ] 
     -- ++ let gen = mkStdGen 2021 in take 10 $ genExprs gen
 
-prop_showread :: Expr -> Bool
-prop_showread e = show e == show (read (show e) :: Expr)
+prop1 :: Expr -> Property
+prop1 e = whenFail ( do
+    print $ show e
+    print $ (\p -> showBr $ fst p) <$> readsBrExpr (show e)
+    print $ show (read (show e) :: Expr)
+    ) $ show e == show (read (show e) :: Expr)
 
+prop2 e = toPretty e == (toPretty (read (show e) :: Expr))
 
+-- BrBracket (BrImpl (BrBracket (BrVar "0")) (BrBracket (BrEq (BrBracket (BrVar "0")) (BrBracket (BrImpl (BrBracket (BrVar "0")) (BrVar "0"))))))
 
 main :: IO ()
-main = quickCheck $ prop_showread
+main = quickCheck $ withMaxSuccess 1000 $ (prop1) .&&. (prop1)
 
 
 

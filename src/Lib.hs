@@ -11,10 +11,21 @@ infixr 3 :=>
 infixl 2 :<=>
 
 data Expr = 
-    Var Symb | Expr :& Expr | Expr :| Expr | Expr :=> Expr | Expr :<=> Expr | Not Expr 
+    Var Symb | 
+    Expr :& Expr | 
+    Expr :| Expr | 
+    Expr :=> Expr | 
+    Expr :<=> Expr | 
+    Not Expr 
 
 data PrettyExpr = 
-    PrettyVar Symb | PrettyAnd [PrettyExpr] | PrettyOr [PrettyExpr] | PrettyEq [PrettyExpr] | PrettyImpl [PrettyExpr] | PrettyNot PrettyExpr
+    PrettyVar Symb | 
+    PrettyAnd [PrettyExpr] | 
+    PrettyOr [PrettyExpr] | 
+    PrettyEq [PrettyExpr] | 
+    PrettyImpl [PrettyExpr] | 
+    PrettyNot PrettyExpr
+    deriving Eq
 
 instance Show Expr where
     showsPrec _ = showsPrettyExpr . toPretty
@@ -112,9 +123,9 @@ showsPrettyExprBr e@(PrettyVar _) = showsPrettyExpr e
 showsPrettyExprBr e@(PrettyNot _) = showsPrettyExpr e
 showsPrettyExprBr e = addBrackets $ showsPrettyExpr e
 
-
+--------------------------------------------------------------------------------------------------------------------------------
 instance Read Expr where
-    readsPrec _ = readsExpr
+    readsPrec _ s = map (\(e, s1) -> (fromBrExpr$ allFlip $ allFlip $ allFlip e, s1)) (readsBrExpr s)
     
 isSeparator :: Char -> Bool 
 isSeparator c = any (== c) " ()|&<=~"
@@ -128,11 +139,11 @@ isBracket c = any (== c) "()"
 isOperator :: String -> Bool
 isOperator op = any (== op) ["&", "|", "~", "=>", "<=>"]
 
-getOperator :: String -> (Expr -> Expr -> Expr)
-getOperator "|" = (:|)
-getOperator "&" = (:&)
-getOperator "=>" = (:=>)
-getOperator "<=>" = (:<=>)
+getOperator :: String -> (BrExpr -> BrExpr -> BrExpr)
+getOperator "|" = BrOr
+getOperator "&" = BrAnd
+getOperator "=>" = BrImpl
+getOperator "<=>" = BrEq
 
 
 takeBracket :: String -> String
@@ -158,12 +169,15 @@ dropBracket' _ [] = undefined
 takeOperator :: String -> String
 takeOperator s = takeWhile isSeparator s
 
-flipExpr (e1 :& (e2 :| e3)) = (e1 :& e2 :| e3)
-flipExpr (e1 :| (e2 :=> e3)) = (e1 :| e2 :=> e3)
-flipExpr (e1 :& (e2 :=> e3)) = (e1 :& e2 :=> e3)
-flipExpr (e1 :=> (e2 :<=> e3)) = (e1 :=> e2 :<=> e3)
-flipExpr (e1 :| (e2 :<=> e3)) = (e1 :| e2 :<=> e3)
-flipExpr (e1 :& (e2 :<=> e3)) = (e1 :& e2 :<=> e3)
+flipExpr (e1 :& (e2 :| e3)) =    ((e1 :& e2)  :| e3)
+
+flipExpr (e1 :| (e2 :=> e3)) =   ((e1 :| e2)  :=> e3)
+flipExpr (e1 :& (e2 :=> e3)) =   ((e1 :& e2)  :=> e3)
+
+flipExpr (e1 :=> (e2 :<=> e3)) = ((e1 :=> e2) :<=> e3)
+flipExpr (e1 :| (e2 :<=> e3)) =  ((e1 :| e2)  :<=> e3)
+flipExpr (e1 :& (e2 :<=> e3)) =  ((e1 :& e2)  :<=> e3)
+
 flipExpr e = e
 
 dropOperator :: String -> String
@@ -185,56 +199,138 @@ mylex (c:s) = do
 -- ffff :: (String,String,String, Bool) -> (String,String,String, Bool)
 data BracketPosition = BothBracket | LeftBracket | NoneBracket 
     deriving Eq
-ffff [(a, b, c, _)] = [(a, b, c, BothBracket)]
+ffff [(a, b, c, d, _)] = [(a, b, c, d, True)]
 ffff [] = []
 
-getFirstOp :: String -> [(String,String,String, BracketPosition)]
+getFirstOp :: String -> [(String,String,String, Bool, Bool)]
 getFirstOp s = do
     (s1', s2') <- mylex s
     case (s1', s2') of
             ("(",_) -> do 
                 (s2'', s3'') <- mylex (dropBracket s)
-                if s2'' ++ s3'' == "" then ffff (getFirstOp (takeBracket s)) else return (takeBracket s, s2'', s3'', LeftBracket)
-            ("~",_) -> return (s2', "~", "", NoneBracket)
+                if s2'' ++ s3'' == "" then ffff (getFirstOp (takeBracket s)) else return (takeBracket s, s2'', s3'', True, False)
+            ("~",_) -> return (s2', "~", "", False, False)
             _ -> do
                 (s2'', s3'') <- mylex s2'
-                return (s1', s2'', s3'', NoneBracket)
+                return (s1', s2'', s3'', False, False)
 
 
-addNot k e = foldr (\_ v -> Not v) e [1..k]
-addNotB k b e = if b then foldr (\_ v -> Not v) e [1..k] else e
+addNot k e = foldr (\_ v -> BrNot v) e [1..k]
+addNotB k b e = if b then foldr (\_ v -> BrNot v) e [1..k] else e
 
-readsExpr :: ReadS (Expr)
-readsExpr s = map fst $ readsExpr' 0 s
-readsExpr' :: Int -> (String -> [((Expr, String), Bool)])
-readsExpr' k s = do
-    (s1, op, s2, bracket_pos) <- getFirstOp s
+addBr b e = if b then BrBracket e else e
+
+readsBrExpr :: ReadS (BrExpr)
+readsBrExpr s = map fst $ readsBrExpr' 0 s
+readsBrExpr' :: Int -> (String -> [((BrExpr, String), Bool)])
+readsBrExpr' k s = do
+    (s1, op, s2, left_in_bracket, both_in_bracket) <- getFirstOp s
     case op ++ s2 of
-        "" -> return ((addNot k (Var s1), ""), bracket_pos == BothBracket)
+        "" -> return ((addNot k (BrVar s1), ""), both_in_bracket)
         otherwise -> do
             case op of
                 "~" -> do
-                    if bracket_pos == BothBracket then do
-                        ((e11, s12),_) <- (readsExpr' 1 s1) :: [((Expr, String), Bool)]
-                        return ((addNot k e11, s12), bracket_pos == BothBracket)
+                    if both_in_bracket then do
+                        ((e11, s12),_) <- (readsBrExpr' 1 s1) :: [((BrExpr, String), Bool)]
+                        return ((addBr (both_in_bracket) $ addNot k e11, s12), True)
                     else do
-                        ((e11, s12),_) <- (readsExpr' (k+1) s1) :: [((Expr, String), Bool)]
-                        return ((e11, s12), bracket_pos == BothBracket)
+                        ((e11, s12),_) <- (readsBrExpr' (k+1) s1) :: [((BrExpr, String), Bool)]
+                        return ((e11, s12), False)
                 otherwise -> do
-                    ((e11', s12), _)<- (readsExpr' (if (bracket_pos /= NoneBracket) then 0 else k) s1) :: [((Expr, String), Bool)]
-                    let e11 = (addNotB k (bracket_pos == LeftBracket) e11')
+                    ((e11', s12), _)<- (readsBrExpr' (if (both_in_bracket || left_in_bracket) then 0 else k) s1) :: [((BrExpr, String), Bool)]
+                    let e11 = addBr left_in_bracket (addNotB k (left_in_bracket && not both_in_bracket) e11')
                     if isOperator op then do
-                        ((e21, s22), isSecondBracket) <- (readsExpr' 0 s2) :: [((Expr, String), Bool)]
+                        ((e21, s22), is_second_bracket) <- (readsBrExpr' 0 s2) :: [((BrExpr, String), Bool)]
 
-                        let res = (if not isSecondBracket then flipExpr else id) $ (getOperator op) e11 e21
+                        let res = (getOperator op) e11 e21
 
-                        return ((addNotB k (bracket_pos == BothBracket) res, s22), bracket_pos == BothBracket)
+                        return ((addBr both_in_bracket (addNotB k both_in_bracket res), s22), both_in_bracket)
                         
                     else do
                         case s12 of
-                            "" -> return ((e11, s12), bracket_pos == BothBracket)
+                            "" -> return ((e11, s12), both_in_bracket)
                             otherwise -> []
-        
+
+data BrExpr = 
+    BrVar Symb | 
+    BrAnd BrExpr BrExpr | 
+    BrOr BrExpr BrExpr | 
+    BrImpl BrExpr BrExpr | 
+    BrEq BrExpr BrExpr | 
+    BrNot BrExpr |
+    BrBracket BrExpr 
+    deriving Show
+
+oneFlip :: BrExpr -> BrExpr
+
+oneFlip (e1 `BrAnd` (e2 `BrOr` e3))   =  ((e1 `BrAnd` e2) `BrOr` e3)     --
+oneFlip (e1 `BrAnd` (e2 `BrImpl` e3)) =  ((e1 `BrAnd` e2) `BrImpl` e3) --
+oneFlip (e1 `BrOr` (e2 `BrImpl` e3))  =  ((e1 `BrOr` e2) `BrImpl` e3)
+oneFlip (e1 `BrAnd` (e2 `BrEq` e3))   =  ((e1 `BrAnd` e2) `BrEq` e3)     --
+oneFlip (e1 `BrOr` (e2 `BrEq` e3))    =  ((e1 `BrOr` e2) `BrEq` e3)
+oneFlip (e1 `BrImpl` (e2 `BrEq` e3))  =  ((e1 `BrImpl` e2) `BrEq` e3)
+
+oneFlip ((e1 `BrOr` e2) `BrAnd` e3)   =  (e1 `BrOr` (e2 `BrAnd` e3) )     --
+oneFlip ((e1 `BrImpl` e2) `BrAnd` e3) =  (e1 `BrImpl` (e2 `BrAnd` e3) ) --
+oneFlip ((e1 `BrImpl` e2) `BrOr` e3)  =  (e1 `BrImpl` (e2 `BrOr` e3) )
+oneFlip ((e1 `BrEq` e2) `BrAnd` e3)   =  (e1 `BrEq` (e2 `BrAnd` e3))     --
+oneFlip ((e1 `BrEq` e2) `BrOr` e3)    =  (e1 `BrEq` (e2 `BrOr` e3))
+oneFlip ((e1 `BrEq` e2) `BrImpl` e3)  =  (e1 `BrEq` (e2 `BrImpl` e3))
+oneFlip e = e
+
+allFlip :: BrExpr -> BrExpr
+allFlip (e1 `BrAnd` e2) = oneFlip $ allFlip e1 `BrAnd` allFlip e2
+allFlip (e1 `BrOr` e2) = oneFlip $ allFlip e1 `BrOr` allFlip e2
+allFlip (e1 `BrImpl` e2) = oneFlip $ allFlip e1 `BrImpl` allFlip e2
+allFlip (e1 `BrEq` e2) = oneFlip $ allFlip e1 `BrEq` allFlip e2
+allFlip (BrBracket e) = BrBracket $ allFlip e
+allFlip (BrNot e) = BrNot $ allFlip e
+allFlip e@(BrVar s) = e
+
+
+
+fromBrExpr :: BrExpr -> Expr
+
+-- fromBrExpr (e1 `BrAnd` (e2 `BrOr` e3))   = fromBrExpr ((e1 `BrAnd` e2) `BrOr` e3)     --
+-- fromBrExpr (e1 `BrAnd` (e2 `BrImpl` e3)) = fromBrExpr ((e1 `BrAnd` e2) `BrImpl` e3) --
+-- fromBrExpr (e1 `BrOr` (e2 `BrImpl` e3))  = fromBrExpr ((e1 `BrOr` e2) `BrImpl` e3)
+-- fromBrExpr (e1 `BrAnd` (e2 `BrEq` e3))   = fromBrExpr ((e1 `BrAnd` e2) `BrEq` e3)     --
+-- fromBrExpr (e1 `BrOr` (e2 `BrEq` e3))    = fromBrExpr ((e1 `BrOr` e2) `BrEq` e3)
+-- fromBrExpr (e1 `BrImpl` (e2 `BrEq` e3))  = fromBrExpr ((e1 `BrImpl` e2) `BrEq` e3)
+
+-- fromBrExpr ((e1 `BrOr` e2) `BrAnd` e3)   = fromBrExpr (e1 `BrOr` (e2 `BrAnd` e3) )     --
+-- fromBrExpr ((e1 `BrImpl` e2) `BrAnd` e3) = fromBrExpr (e1 `BrImpl` (e2 `BrAnd` e3) ) --
+-- fromBrExpr ((e1 `BrImpl` e2) `BrOr` e3)  = fromBrExpr (e1 `BrImpl` (e2 `BrOr` e3) )
+-- fromBrExpr ((e1 `BrEq` e2) `BrAnd` e3)   = fromBrExpr (e1 `BrEq` (e2 `BrAnd` e3))     --
+-- fromBrExpr ((e1 `BrEq` e2) `BrOr` e3)    = fromBrExpr (e1 `BrEq` (e2 `BrOr` e3))
+-- fromBrExpr ((e1 `BrEq` e2) `BrImpl` e3)  = fromBrExpr (e1 `BrEq` (e2 `BrImpl` e3))
+
+-- fromBrExpr (e1 `BrAnd` (BrBracket e2)) = fromBrExpr e1 :& fromBrExpr e2
+-- fromBrExpr ((BrBracket e1) `BrAnd` e2) = fromBrExpr e1 :& fromBrExpr e2
+-- fromBrExpr (e1 `BrOr` (BrBracket e2)) = fromBrExpr e1 :| fromBrExpr e2
+-- fromBrExpr ((BrBracket e1) `BrOr` e2) = fromBrExpr e1 :| fromBrExpr e2
+-- fromBrExpr (e1 `BrImpl` (BrBracket e2)) = fromBrExpr e1 :=> fromBrExpr e2
+-- fromBrExpr ((BrBracket e1) `BrImpl` e2) = fromBrExpr e1 :=> fromBrExpr e2
+-- fromBrExpr (e1 `BrEq` (BrBracket e2)) = fromBrExpr e1 :<=> fromBrExpr e2
+-- fromBrExpr ((BrBracket e1) `BrEq` e2) = fromBrExpr e1 :<=> fromBrExpr e2
+
+fromBrExpr (e1 `BrAnd` e2) = fromBrExpr e1 :& fromBrExpr e2
+fromBrExpr (e1 `BrOr` e2) = fromBrExpr e1 :| fromBrExpr e2
+fromBrExpr (e1 `BrImpl` e2) = fromBrExpr e1 :=> fromBrExpr e2
+fromBrExpr (e1 `BrEq` e2) = fromBrExpr e1 :<=> fromBrExpr e2
+fromBrExpr (BrVar s) = Var s
+fromBrExpr (BrNot e) = Not $ fromBrExpr e
+fromBrExpr (BrBracket e) = fromBrExpr e
+
+showBr :: BrExpr -> String
+showBr (e1 `BrAnd` e2) = "(" ++ showBr e1 ++ ") & (" ++ showBr e2 ++ ")"
+showBr (e1 `BrOr` e2) = "(" ++ showBr e1 ++ ") | (" ++ showBr e2 ++ ")"
+showBr (e1 `BrImpl` e2) = "(" ++ showBr e1  ++ ") => (" ++  showBr e2 ++ ")"
+showBr (e1 `BrEq` e2) = "(" ++ showBr e1  ++ ") <=> (" ++  showBr e2 ++ ")"
+showBr (BrVar s) = s
+showBr (BrNot e) = "~(" ++ showBr e ++ ")"
+showBr (BrBracket e) = "[" ++ showBr e ++ "]"
+
 
 
 someFunc :: IO ()
@@ -254,3 +350,16 @@ modif (e1 :& e2) = (modif e1) :& (modif e2)
 modif (e1 :| e2) = (modif e1) :| (modif e2)
 modif (e1 :=> e2) = (modif e1) :=> (modif e2)
 modif (e1 :<=> e2) = (modif e1) :<=> (modif e2)
+
+
+negationNormalForm :: Expr -> Expr
+negationNormalForm (Not (e1 :| e2)) = negationNormalForm (Not e1) :& negationNormalForm (Not e2)
+negationNormalForm (Not (e1 :& e2)) = negationNormalForm (Not e1) :| negationNormalForm (Not e2)
+negationNormalForm (Not (e1 :=> e2)) = negationNormalForm (Not $ (Not e1 :| e2))
+negationNormalForm (Not (e1 :<=> e2)) = negationNormalForm (Not $ (Not e1 :& e2 :| e1 :& Not e2))
+negationNormalForm (Not (Not e)) = e
+negationNormalForm (e1 :| e2) = negationNormalForm (e1) :| negationNormalForm (e2)
+negationNormalForm (e1 :& e2) = negationNormalForm (e1) :& negationNormalForm (e2)
+negationNormalForm (e1 :=> e2) = negationNormalForm (Not e1 :| e2)
+negationNormalForm (e1 :<=> e2) = negationNormalForm (Not e1 :& e2 :| e1 :& Not e2)
+negationNormalForm e = e
