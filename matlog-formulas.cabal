@@ -33,6 +33,7 @@ library
   build-depends:
       QuickCheck
     , base >=4.7 && <5
+    , random
   default-language: Haskell2010
 
 executable matlog-formulas-exe
@@ -46,6 +47,7 @@ executable matlog-formulas-exe
       QuickCheck
     , base >=4.7 && <5
     , matlog-formulas
+    , random
   default-language: Haskell2010
 
 test-suite matlog-formulas-test
@@ -60,4 +62,5 @@ test-suite matlog-formulas-test
       QuickCheck
     , base >=4.7 && <5
     , matlog-formulas
+    , random
   default-language: Haskell2010
