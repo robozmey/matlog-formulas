@@ -11,21 +11,22 @@ infixr 3 :=>
 infixl 2 :<=>
 
 data Expr = 
-    Var Symb | Expr :& Expr | Expr :| Expr | Expr :=> Expr | Expr :<=> Expr | Not Expr
+    Var Symb | Expr :& Expr | Expr :| Expr | Expr :=> Expr | Expr :<=> Expr | Not Expr 
 
 data PrettyExpr = 
     PrettyVar Symb | PrettyAnd [PrettyExpr] | PrettyOr [PrettyExpr] | PrettyEq [PrettyExpr] | PrettyImpl [PrettyExpr] | PrettyNot PrettyExpr
 
 instance Show Expr where
     showsPrec _ = showsPrettyExpr . toPretty
+    -- showsPrec _ = showsExpr
 
--- showsExpr :: Expr -> ShowS
--- showsExpr (Var s) = showString s
--- showsExpr (Not e) = showString "~" . showsExpr e
--- showsExpr (e1 :& e2) = showString "(". showsExpr e1 . showString " & " . showsExpr e2 . showString ")"
--- showsExpr (e1 :| e2) = showString "(". showsExpr e1 . showString " | " . showsExpr e2 . showString ")"
--- showsExpr (e1 :=> e2) = showString "(". showsExpr e1 . showString " => " . showsExpr e2 . showString ")"
--- showsExpr (e1 :<=> e2) = showString "(". showsExpr e1 . showString " <=> " . showsExpr e2 . showString ")"
+showsExpr :: Expr -> ShowS
+showsExpr (Var s) = showString s
+showsExpr (Not e) = showString "~" . showsExpr e
+showsExpr (e1 :& e2) = showString "(". showsExpr e1 . showString " & " . showsExpr e2 . showString ")"
+showsExpr (e1 :| e2) = showString "(". showsExpr e1 . showString " | " . showsExpr e2 . showString ")"
+showsExpr (e1 :=> e2) = showString "(". showsExpr e1 . showString " => " . showsExpr e2 . showString ")"
+showsExpr (e1 :<=> e2) = showString "(". showsExpr e1 . showString " <=> " . showsExpr e2 . showString ")"
 
 toPretty :: Expr -> PrettyExpr
 toPretty (Var s) = PrettyVar s
@@ -81,7 +82,7 @@ addBrackets ss = showString "(". ss . showString ")"
 
 showsPrettyExpr :: PrettyExpr -> ShowS
 showsPrettyExpr (PrettyVar s) = showString s
-showsPrettyExpr (PrettyNot e) = showString "~ " . showsPrettyExprBr e
+showsPrettyExpr (PrettyNot e) = showString " ~ " . showsPrettyExprBr e
 showsPrettyExpr (PrettyAnd []) = undefined
 showsPrettyExpr (PrettyAnd (e:es)) = foldl (\s e -> s . showString " & " . showsPrettyExprBr e) (showsPrettyExprBr e) es
 showsPrettyExpr (PrettyOr []) = undefined
@@ -157,36 +158,75 @@ dropBracket' _ [] = undefined
 takeOperator :: String -> String
 takeOperator s = takeWhile isSeparator s
 
+getExPr :: Expr -> Int
+getExPr (e1 :& e2) = 5
+getExPr (e1 :| e2) = 4
+getExPr (e1 :=> e2) = 3
+getExPr (e1 :<=> e2) = 2
+getExPr (Not e1) = getExPr e1
+getExPr _ = 0
+
+flipExpr (e1 :& (e2 :| e3)) = (e1 :& e2 :| e3)
+flipExpr (e1 :| (e2 :=> e3)) = (e1 :| e2 :=> e3)
+flipExpr (e1 :& (e2 :=> e3)) = (e1 :& e2 :=> e3)
+flipExpr (e1 :=> (e2 :<=> e3)) = (e1 :=> e2 :<=> e3)
+flipExpr (e1 :| (e2 :<=> e3)) = (e1 :| e2 :<=> e3)
+flipExpr (e1 :& (e2 :<=> e3)) = (e1 :& e2 :<=> e3)
+flipExpr e = e
+
 dropOperator :: String -> String
 dropOperator s = dropWhile isSeparator s
 
-getFirstOp :: String -> (String,String,String)
-getFirstOp s = (case lex s of
-            [("(",_)]   -> case lex (dropBracket s) of
-                [(s2'', s3'')] -> 
-                    if s2'' ++ s3'' == "" then getFirstOp (takeBracket s) else (takeBracket s, s2'', s3'')
-                otherwise -> ( "LOL", "", "")
-            [("~",s2')] -> (s2', "~", "")
-            [(s1', s2')] -> case lex s2' of
-                [(s2'', s3'')] -> (s1', s2'', s3'')
-                otherwise -> ( "LOL2", "", "")
-            otherwise -> ( "LOL3", "", ""))
+-- ffff :: (String,String,String, Bool) -> (String,String,String, Bool)
+ffff [(a, b, c,_ , _)] = [(a, b, c, True, True)]
+ffff [] = []
+
+getFirstOp :: String -> [(String,String,String, Bool, Bool)]
+getFirstOp s = do
+    (s1', s2') <- lex s
+    case (s1', s2') of
+            ("(",_) -> do 
+                (s2'', s3'') <- lex (dropBracket s)
+                if s2'' ++ s3'' == "" then ffff (getFirstOp (takeBracket s)) else return (takeBracket s, s2'', s3'', True, False)
+            ("~",_) -> return (s2', "~", "", False, False)
+            _ -> do
+                (s2'', s3'') <- lex s2'
+                return (s1', s2'', s3'', False, False)
+
+
+addNot k e = foldr (\_ v -> Not v) e [1..k]
+addNotB k b e = if b then foldr (\_ v -> Not v) e [1..k] else e
 
 readsExpr :: ReadS (Expr)
-readsExpr s' = do
-    let s = filter (/=' ') s'
-    let (s1, op, s2) = getFirstOp s
+readsExpr s = map fst $ readsExpr' 0 s
+readsExpr' :: Int -> (String -> [((Expr, String), Bool)])
+readsExpr' k s = do
+    -- let s = filter (/=' ') s'
+    (s1, op, s2, isFirstBracket, isInBracket) <- getFirstOp s
     case op ++ s2 of
-        "" -> return (Var s1, "")
+        "" -> return ((addNot k (Var s1), ""), isInBracket)
         otherwise -> do
-            (e11, s12) <- (reads s1) :: [(Expr, String)]
             case op of
-                "~" -> return (Not e11, s12)
+                "~" -> do
+                    if isFirstBracket then do
+                        ((e11, s12),_) <- (readsExpr' 0 s1) :: [((Expr, String), Bool)]
+                        return ((addNot k e11, s12), isInBracket)
+                    else do
+                        ((e11, s12),_) <- (readsExpr' (k+1) s1) :: [((Expr, String), Bool)]
+                        return ((e11, s12), isInBracket)
                 otherwise -> do
-                    (e21, s22) <- (reads s2) :: [(Expr, String)]
-                    case s12 of 
-                        "" -> if isOperator op then  return  ((getOperator op) e11 e21,s22) else return (e11, s12)
-                        otherwise -> []
+                    ((e11', s12), _)<- (readsExpr' (if isFirstBracket then 0 else k) s1) :: [((Expr, String), Bool)]
+                    let e11 = (addNotB k isFirstBracket e11')
+                    if isOperator op then do
+                        ((e21, s22), _) <- (readsExpr' 0 s2) :: [((Expr, String), Bool)]
+
+                        let res = (getOperator op) e11 e21
+                        return  ((flipExpr res, s22), isInBracket)
+                        
+                    else do
+                        case s12 of 
+                            "" -> return ((e11, s12), isInBracket)
+                            otherwise -> []
         
 
         
@@ -198,9 +238,10 @@ readsExpr s' = do
 someFunc :: IO ()
 someFunc = print y
 
-y = (read x :: Expr)
-x1 = "x_0=>x_1"
+y = (read bracket_test :: Expr)
+bracket_test = "1|(2&3&4)|5|6|7&8&9|0|10"
+not_test = "~x | ~(x|x) | ~(x|(x|x)) | ~ ~x"
 x2 = "(x_0=>x_1)=>x_2=>(x_5=>x_6)=>x_4"
-x = show (Not $ (Var "x_0" :=> Var "x_1") :=>  (  (Var "x_2"  :=> (Var "x_5" :=> Var "x_6") :=> Var "x_4")))
+x = show (Not $ Var "x_0" :| Var "x_1" :&  (  (Var "x_2"  :& Var "x_5" :| Var "x_6" :& Var "x_4")))
 
 
