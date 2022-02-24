@@ -1,31 +1,66 @@
 import Test.QuickCheck
-import System.Random
+import Expr
 import Lib
+import Checkers
 
 instance Arbitrary Expr where
     arbitrary = sized arbitrary'
         where
-        arbitrary' 0 = Var <$> (show <$> (arbitrary :: Gen Int))
+        arbitrary' 0 = aVar 2
         arbitrary' n =
             oneof [ 
-                  (:|) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
+                  aVar $ round $ log $ fromIntegral n
+                , (:|) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
                 , (:&) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
                 , (:=>) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
                 , (:<=>) <$> resize (n `div` 2) arbitrary <*> resize (n `div` 2) arbitrary
-                , Not <$> arbitrary
+                , Not <$>  resize (n-1) arbitrary
                 ]
+        aVar sz = Var <$> ("x_"++) <$> show <$> resize sz (arbitrary :: Gen Int)
 
-prop1 :: Expr -> Property
-prop1 e = whenFail ( do
+propShowRead :: Expr -> Property
+propShowRead e = whenFail ( do
+    putStr $ "Show-Read test failed"
     print $ show e
     print $ (\p -> showBr $ fst p) <$> readsBrExpr (show e)
     print $ show (read (show e) :: Expr)
     ) $ show e == show (read (show e) :: Expr)
 
-prop2 e = toPretty e == (toPretty (read (show e) :: Expr))
+---------------------------------------------
+
+propEqNNF e = whenFail ( do
+    putStr "EqNNF test failed"
+    ) $ equivalence e $ toNNF e
+
+propEqDNF e = whenFail ( do
+    putStr "EqDNF test failed"
+    ) $ equivalence e $ toDNF e
+
+propEqCNF e = whenFail ( do
+    putStr "EqCNF test failed"
+    ) $ equivalence e $ toCNF e
+
+propIsNNF e = whenFail ( do
+    putStr "isNNF test failed"
+    ) $ isNNF $ toNNF e
+
+propIsDNF e = whenFail ( do
+    putStr "isDNF test failed"
+    ) $ isDNF $ toDNF e
+
+propIsCNF e = whenFail ( do
+    putStr "isCNF test failed"
+    ) $ isCNF $ toCNF e
 
 main :: IO ()
-main = quickCheck $ withMaxSuccess 1000 $ (prop1) .&&. (prop2)
+main = quickCheck $ withMaxSuccess 30  (
+    propShowRead .&&. 
+    propEqNNF .&&. 
+    propEqDNF .&&. 
+    propEqCNF .&&.
+    propIsNNF .&&. 
+    propIsDNF .&&.
+    propIsCNF)
 
 
 
