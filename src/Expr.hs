@@ -243,6 +243,8 @@ oneFlip ((e1 `BrImpl` e2) `BrOr` e3)  =  (e1 `BrImpl` (e2 `BrOr` e3) )
 oneFlip ((e1 `BrEq` e2) `BrAnd` e3)   =  (e1 `BrEq` (e2 `BrAnd` e3))     --
 oneFlip ((e1 `BrEq` e2) `BrOr` e3)    =  (e1 `BrEq` (e2 `BrOr` e3))
 oneFlip ((e1 `BrEq` e2) `BrImpl` e3)  =  (e1 `BrEq` (e2 `BrImpl` e3))
+
+oneFlip ((e1 `BrImpl` e2) `BrImpl` e3)  =  (e1 `BrImpl` (e2 `BrImpl` e3))
 oneFlip e = e
 
 allFlip :: BrExpr -> BrExpr

@@ -48,8 +48,8 @@ enumerateVars vs' = do
     bs <- enumerateBools (length vs) :: [[Bool]]
     return $ Data.Map.fromList $ (zip vs bs :: [(Symb, Bool)])
 
-equivalence :: Expr -> Expr -> Bool
-equivalence e1 e2 = all id $ do
+naiveEquivalence :: Expr -> Expr -> Bool
+naiveEquivalence e1 e2 = all id $ do
     let v1 = getVars e1
     let v2 = getVars e2
     mp <- enumerateVars $ v1 ++ v2 :: [Map Symb Bool]
@@ -101,3 +101,12 @@ isDClause (e1 :& e2) = False
 isDClause (Not (Var s)) = True
 isDClause (Not _) = False
 isDClause (Var s) = True
+
+-----------------------------------------------------------------
+heightExpr :: Expr -> Int
+heightExpr (e1 :& e2) = max (heightExpr e1) (heightExpr e2) + 1
+heightExpr (e1 :| e2) = max (heightExpr e1) (heightExpr e2) + 1
+heightExpr (e1 :=> e2) = max (heightExpr e1) (heightExpr e2) + 1
+heightExpr (e1 :<=> e2) = max (heightExpr e1) (heightExpr e2) + 1
+heightExpr (Not e) = heightExpr e + 1
+heightExpr (Var _) = 1

@@ -30,15 +30,15 @@ propShowRead e = whenFail ( do
 
 propEqNNF e = whenFail ( do
     putStr "EqNNF test failed"
-    ) $ equivalence e $ toNNF e
+    ) $ naiveEquivalence e $ toNNF e
 
 propEqDNF e = whenFail ( do
     putStr "EqDNF test failed"
-    ) $ equivalence e $ toDNF e
+    ) $ naiveEquivalence e $ toDNF e
 
 propEqCNF e = whenFail ( do
     putStr "EqCNF test failed"
-    ) $ equivalence e $ toCNF e
+    ) $ naiveEquivalence e $ toCNF e
 
 propIsNNF e = whenFail ( do
     putStr "isNNF test failed"
@@ -54,13 +54,14 @@ propIsCNF e = whenFail ( do
 
 main :: IO ()
 main = quickCheck $ withMaxSuccess 30  (
-    propShowRead .&&. 
     propEqNNF .&&. 
     propEqDNF .&&. 
     propEqCNF .&&.
     propIsNNF .&&. 
     propIsDNF .&&.
-    propIsCNF)
+    propIsCNF .&&.
+    propShowRead 
+    )
 
 
 
