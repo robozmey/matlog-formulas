@@ -42,18 +42,23 @@ enumerateBools n = do
     else
         [[]]
 
-enumerateVars :: [Symb] -> [Map Symb Bool]
+enumerateVars :: [Symb] -> [[(Symb, Bool)]]
 enumerateVars vs' = do
     let vs = Data.Set.toList $ Data.Set.fromList vs' :: [Symb]
     bs <- enumerateBools (length vs) :: [[Bool]]
-    return $ Data.Map.fromList $ (zip vs bs :: [(Symb, Bool)])
+    return $ zip vs bs --Data.Map.fromList $ (
 
 naiveEquivalence :: Expr -> Expr -> Bool
 naiveEquivalence e1 e2 = all id $ do
     let v1 = getVars e1
     let v2 = getVars e2
-    mp <- enumerateVars $ v1 ++ v2 :: [Map Symb Bool]
-    return $ calculateExpr mp e1 == calculateExpr mp e2
+    let st = Data.Set.fromList v1
+    let ve2 = Prelude.filter (\s -> Data.Set.notMember s st) v2
+    b1 <- enumerateVars v1
+    return $ any id $ do
+        b2 <- enumerateVars ve2
+        let mp = Data.Map.fromList $ b1 ++ b2
+        return $ calculateExpr mp e1 == calculateExpr mp e2
 
 -------- Form confirmation
 

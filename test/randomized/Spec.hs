@@ -40,6 +40,18 @@ propEqCNF e = whenFail ( do
     putStr "EqCNF test failed"
     ) $ naiveEquivalence e $ toCNF e
 
+propEqCNFtseytin e = whenFail ( do
+    putStr "EqCNF test failed"
+    ) $ naiveEquivalence e $ toCNFtseytin e
+
+propEqCNF1 e = whenFail ( do
+    putStr "EqCNF test failed"
+    ) $ naiveEquivalence e $ toCNF1 e
+
+propEqCNFviaDNF e = whenFail ( do
+    putStr "EqCNF test failed"
+    ) $ naiveEquivalence e $ toCNFviaDNF e
+
 propIsNNF e = whenFail ( do
     putStr "isNNF test failed"
     ) $ isNNF $ toNNF e
@@ -52,16 +64,36 @@ propIsCNF e = whenFail ( do
     putStr "isCNF test failed"
     ) $ isCNF $ toCNF e
 
+propIsCNFtseytin e = whenFail ( do
+    putStr "isCNF test failed"
+    ) $ isCNF $ toCNFtseytin e
+
+propIsCNF1 e = whenFail ( do
+    putStr "isCNF test failed"
+    ) $ isCNF $ toCNF1 e
+
+propIsCNFviaDNF e = whenFail ( do
+    putStr "isCNF test failed"
+    ) $ isCNF $ toCNFviaDNF e
+
 main :: IO ()
-main = quickCheck $ withMaxSuccess 30  (
-    propEqNNF .&&. 
-    propEqDNF .&&. 
-    propEqCNF .&&.
-    propIsNNF .&&. 
-    propIsDNF .&&.
-    propIsCNF .&&.
-    propShowRead 
-    )
+main = do
+    quickCheck $ withMaxSuccess 15  (
+        propEqNNF .&&. 
+        propEqDNF .&&. 
+        -- propEqCNF .&&.
+        -- propEqCNFtseytin .&&. 
+        propEqCNF1 .&&.
+        propEqCNFviaDNF .&&.
+        propIsNNF .&&. 
+        propIsDNF .&&.
+        propIsCNF .&&.
+        propIsCNFtseytin .&&.
+        propIsCNF1 .&&.
+        propIsCNFviaDNF .&&.
+        propShowRead 
+        )
+    
 
 
 

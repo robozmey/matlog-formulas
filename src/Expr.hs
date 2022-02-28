@@ -1,9 +1,4 @@
-module Expr(
-    Expr(..), 
-    Symb,
-    BrExpr(..),
-    readsBrExpr
-    ) where
+module Expr where
 
 import Control.Applicative
 
@@ -34,6 +29,9 @@ data PrettyExpr =
 
 instance Show Expr where
     showsPrec _ = showsPrettyExpr . toPretty
+
+instance Show PrettyExpr where
+    showsPrec _ = showsPrettyExpr
 
 toPretty :: Expr -> PrettyExpr
 toPretty (Var s) = PrettyVar s

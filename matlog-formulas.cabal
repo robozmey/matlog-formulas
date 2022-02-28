@@ -32,8 +32,7 @@ library
   hs-source-dirs:
       src
   build-depends:
-      QuickCheck
-    , base >=4.7 && <5
+      base >=4.7 && <5
     , containers
     , random
   default-language: Haskell2010
@@ -46,6 +45,22 @@ executable matlog-formulas-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
+      base >=4.7 && <5
+    , containers
+    , matlog-formulas
+    , random
+  default-language: Haskell2010
+
+test-suite hw1-randomized-tests
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Checkers
+      Paths_matlog_formulas
+  hs-source-dirs:
+      test/randomized
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
       QuickCheck
     , base >=4.7 && <5
     , containers
@@ -53,17 +68,17 @@ executable matlog-formulas-exe
     , random
   default-language: Haskell2010
 
-test-suite matlog-formulas-test
+test-suite hw1-unit-tests
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Checkers
+      TestExpr
       Paths_matlog_formulas
   hs-source-dirs:
-      test
+      test/unit
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      QuickCheck
+      HUnit
     , base >=4.7 && <5
     , containers
     , matlog-formulas

@@ -21,7 +21,6 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- QuickCheck
 - random
 - containers
 
@@ -40,12 +39,24 @@ executables:
     - matlog-formulas
 
 tests:
-  matlog-formulas-test:
+  hw1-randomized-tests:
     main:                Spec.hs
-    source-dirs:         test
+    source-dirs:         test/randomized
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
     - matlog-formulas
+    - QuickCheck
+
+  hw1-unit-tests:
+    main:                Spec.hs
+    source-dirs:         test/unit
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - matlog-formulas
+    - HUnit
