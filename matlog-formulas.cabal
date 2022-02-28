@@ -37,7 +37,7 @@ library
     , random
   default-language: Haskell2010
 
-executable matlog-formulas-exe
+executable exe
   main-is: Main.hs
   other-modules:
       Paths_matlog_formulas
@@ -51,7 +51,7 @@ executable matlog-formulas-exe
     , random
   default-language: Haskell2010
 
-test-suite hw1-randomized-tests
+test-suite randomized-tests
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
@@ -68,11 +68,12 @@ test-suite hw1-randomized-tests
     , random
   default-language: Haskell2010
 
-test-suite hw1-unit-tests
+test-suite unit-tests
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
       TestExpr
+      TestLib
       Paths_matlog_formulas
   hs-source-dirs:
       test/unit

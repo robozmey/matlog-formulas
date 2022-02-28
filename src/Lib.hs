@@ -10,7 +10,7 @@ toBasis (e1 :& e2) = toBasis (e1) :& toBasis (e2)
 toBasis (Not e) = Not $ toBasis e
 toBasis e@(Var s) = e
 
-dml :: Expr -> Expr
+dml :: Expr -> Expr -- De Morgan Laws
 dml (Not (e1 :| e2)) = dml (Not e1) :& dml (Not e2)
 dml (Not (e1 :& e2)) = dml (Not e1) :| dml (Not e2)
 dml (e1 :| e2) = dml (e1) :| dml (e2)
@@ -48,24 +48,54 @@ distrD (e1 :| e2) = case expr of
 distrD e = e
 
 tseytin :: Expr -> Expr
+tseytin (Var s) = Var "ts_0" :& (Var "ts_0" :<=> Var s)
 tseytin expr = foldl (:&) (Var "ts_0") l
       where (l, _) = newVars 0 expr
-            newVars :: Int -> Expr -> ([Expr], Int)                 
-            newVars c0 (e1 :& e2) = (l1 ++ l2 ++ [Var ("ts_" ++ show c0) :<=> (e1 :& e2)], c2)
+            newVars :: Int -> Expr -> ([Expr], Int)   
+            newVars c0 (Var s) = ([], c0)              
+            newVars c0 (e1 :& e2) = (l1 ++ l2 ++ [Var ("ts_" ++ show c0) :<=> (e1' :& e2')], c2)
                   where (l1, c1) = newVars (c0+1) e1
                         (l2, c2) = newVars c1 e2
-            newVars c0 (e1 :| e2) = (l1 ++ l2 ++ [Var ("ts_" ++ show c0) :<=> (e1 :| e2)], c2)
+                        e1' = case e1 of
+                              (Var _) -> e1
+                              _ -> Var ("ts_" ++ show (c0+1))
+                        e2' = case e2 of
+                              (Var _) -> e2
+                              _ -> Var ("ts_" ++ show c1)  
+            newVars c0 (e1 :| e2) = (l1 ++ l2 ++ [Var ("ts_" ++ show c0) :<=> (e1' :| e2')], c2)
                   where (l1, c1) = newVars (c0+1) e1
                         (l2, c2) = newVars c1 e2
-            newVars c0 (e1 :=> e2) = (l1 ++ l2 ++ [Var ("ts_" ++ show c0) :<=> (e1 :=> e2)], c2)
+                        e1' = case e1 of
+                              (Var _) -> e1
+                              _ -> Var ("ts_" ++ show (c0+1))
+                        e2' = case e2 of
+                              (Var _) -> e2
+                              _ -> Var ("ts_" ++ show c1) 
+            newVars c0 (e1 :=> e2) = (l1 ++ l2 ++ [Var ("ts_" ++ show c0) :<=> (e1' :=> e2')], c2)
                   where (l1, c1) = newVars (c0+1) e1
                         (l2, c2) = newVars c1 e2
-            newVars c0 (e1 :<=> e2) = (l1 ++ l2 ++ [Var ("ts_" ++ show c0) :<=> (e1 :<=> e2)], c2)
+                        e1' = case e1 of
+                              (Var _) -> e1
+                              _ -> Var ("ts_" ++ show (c0+1))
+                        e2' = case e2 of
+                              (Var _) -> e2
+                              _ -> Var ("ts_" ++ show c1) 
+            newVars c0 (e1 :<=> e2) = (l1 ++ l2 ++ [Var ("ts_" ++ show c0) :<=> (e1' :<=> e2')], c2)
                   where (l1, c1) = newVars (c0+1) e1
                         (l2, c2) = newVars c1 e2
-            newVars c0 (Not e) = (l1 ++ [Var ("ts_" ++ show c0) :<=> (Not e)], c1)
+                        e1' = case e1 of
+                              (Var _) -> e1
+                              _ -> Var ("ts_" ++ show (c0+1))
+                        e2' = case e2 of
+                              (Var _) -> e2
+                              _ -> Var ("ts_" ++ show c1) 
+            newVars c0 (Not (Var s)) = ([Var ("ts_" ++ show c0) :<=> Not (Var s)], c0+1)
+            newVars c0 (Not e) = (l1 ++ [Var ("ts_" ++ show c0) :<=> (Not e')], c1)
                   where (l1, c1) = newVars (c0+1) e
-            newVars c0 (Var s) = ([Var ("ts_" ++ show c0) :<=> (Var s)], c0+1)
+                        e' = case e of
+                              (Var _) -> e
+                              _ -> Var ("ts_" ++ show (c0+1))
+            
                   
 
 toNNF :: Expr -> Expr

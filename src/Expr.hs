@@ -16,7 +16,9 @@ data Expr =
     Expr :=> Expr | 
     Expr :<=> Expr | 
     Not Expr 
-    deriving Eq
+
+instance Eq Expr where
+    (==) e1 e2 = toPretty e1 == toPretty e2  
 
 
 data PrettyExpr = 
