@@ -4,7 +4,7 @@
 
 ```
 stack build
-stack exec matlog-formulas-exe
+stack exec exe
 ```
 
 Реализовать 3 функции:
