@@ -21,7 +21,7 @@ instance Eq Expr where
     (==) e1 e2 = toPretty e1 == toPretty e2  
 
 
-data PrettyExpr = 
+data PrettyExpr = -- uses to show "(a & b) | c | d" as "a & b | c | d"
     PrettyVar Symb | 
     PrettyAnd [PrettyExpr] | 
     PrettyOr [PrettyExpr] | 
@@ -30,7 +30,7 @@ data PrettyExpr =
     PrettyNot PrettyExpr
     deriving Eq
 
-instance Show Expr where
+instance Show Expr where  -- show uses PrettyExpr
     showsPrec _ = showsPrettyExpr . toPretty
 
 instance Show PrettyExpr where
@@ -121,7 +121,18 @@ showsPrettyExprBr e@(PrettyNot _) = showsPrettyExpr e
 showsPrettyExprBr e = addBrackets $ showsPrettyExpr e
 
 --------------------------------------------------------------------------------------------------------------------------------
-instance Read Expr where
+
+data BrExpr = -- uses to give operator priorities, similar to Expr, but brackets marked
+    BrVar Symb | 
+    BrAnd BrExpr BrExpr | 
+    BrOr BrExpr BrExpr | 
+    BrImpl BrExpr BrExpr | 
+    BrEq BrExpr BrExpr | 
+    BrNot BrExpr |
+    BrBracket BrExpr 
+    deriving Show
+
+instance Read Expr where  -- Read uses BrExpr type
     readsPrec _ s = map (\(e, s1) -> (fromBrExpr$ allFlip $ allFlip $ allFlip e, s1)) (readsBrExpr s)
 
 isOperator :: String -> Bool
@@ -184,10 +195,13 @@ getFirstOp s = do
                 (s2'', s3'') <- mylex s2'
                 return (s1', s2'', s3'', False, False)
 
+addNot :: Int -> BrExpr -> BrExpr
+addNot k e = foldr (\_ v -> BrNot v) e [1..k] -- adds k Nots to expression
 
-addNot k e = foldr (\_ v -> BrNot v) e [1..k]
-addNotB k b e = if b then foldr (\_ v -> BrNot v) e [1..k] else e
+addNotB :: Int -> Bool -> BrExpr -> BrExpr
+addNotB k b e = if b then foldr (\_ v -> BrNot v) e [1..k] else e  -- adds k Nots to expression if b is true
 
+addBr :: Bool -> BrExpr -> BrExpr
 addBr b e = if b then BrBracket e else e
 
 readsBrExpr :: ReadS (BrExpr)
@@ -221,17 +235,7 @@ readsBrExpr' k s = do
                             "" -> return ((e11, s12), both_in_bracket)
                             otherwise -> []
 
-data BrExpr = 
-    BrVar Symb | 
-    BrAnd BrExpr BrExpr | 
-    BrOr BrExpr BrExpr | 
-    BrImpl BrExpr BrExpr | 
-    BrEq BrExpr BrExpr | 
-    BrNot BrExpr |
-    BrBracket BrExpr 
-    deriving Show
-
-oneFlip :: BrExpr -> BrExpr
+oneFlip :: BrExpr -> BrExpr -- flip operators to make priorities right
 oneFlip (e1 `BrAnd` (e2 `BrOr` e3))   =  ((e1 `BrAnd` e2) `BrOr` e3)     --
 oneFlip (e1 `BrAnd` (e2 `BrImpl` e3)) =  ((e1 `BrAnd` e2) `BrImpl` e3) --
 oneFlip (e1 `BrOr` (e2 `BrImpl` e3))  =  ((e1 `BrOr` e2) `BrImpl` e3)
