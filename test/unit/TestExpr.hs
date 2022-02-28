@@ -79,9 +79,25 @@ testShow = TestCase $ do
     let error_message = "Show Expr unit test failed!"
     let tests = [
             ("x_1", Var $ "x_1"),
-            ("x_1 & x_2", Var "x_1" :& Var "x_2")
+            ("x_1 & x_2", Var "x_1" :& Var "x_2"),
+            ("x_1 | ~(x_2 <=> x_3)", Var "x_1" :| Not (Var "x_2" :<=> Var "x_3")),
+            ("x_1 | x_2 | x_3 & x_4 <=> x_5", (Var "x_1" :| Var "x_2" :| (Var "x_3" :& Var "x_4")) :<=> Var "x_5"),
+            ("(x_1 <=> x_2) => x_3 <=> x_4", ((Var "x_1" :<=> Var "x_2") :=> Var "x_3") :<=> Var "x_4"),
+            ("~(~x_1 & ~x_2) | ~x_3", Not (Not (Var "x_1") :& Not (Var "x_2")) :| Not (Var "x_3"))
             ] :: [(String, Expr)]
     assertEqualList error_message show tests
 
+testRead = TestCase $ do
+    let error_message = "Read Expr unit test failed!"
+    let tests = [
+            (Var $ "x_1", "x_1"),
+            (Var "x_1" :& Var "x_2", "x_1 & x_2"),
+            (Var "x_1" :| Not (Var "x_2" :<=> Var "x_3"), "x_1 | ~(x_2 <=> x_3)"),
+            ((Var "x_1" :| Var "x_2" :| (Var "x_3" :& Var "x_4")) :<=> Var "x_5", "x_1 | x_2 | x_3 & x_4 <=> x_5"),
+            (((Var "x_1" :<=> Var "x_2") :=> Var "x_3") :<=> Var "x_4", "(x_1 <=> x_2) => x_3 <=> x_4"),
+            (Not (Not (Var "x_1") :& Not (Var "x_2")) :| Not (Var "x_3"), "~(~x_1 & ~x_2) | ~x_3")
+            ]
+    assertEqualList error_message (\s -> read s :: Expr) tests
 
-testExpr = TestList [testToPretty, testShow]
+
+testExpr = TestList [testRead, testShow]

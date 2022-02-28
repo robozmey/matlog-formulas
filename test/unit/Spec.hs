@@ -7,9 +7,7 @@ import Lib
 import TestExpr
 
 -- tests = [ (Var "x", PrettyVar "x"), (Var "x" :& Var "x", PrettyAnd [PrettyVar "x", PrettyVar "x"]) ] :: [(Expr, PrettyExpr)]
-        
-
-
+        s
 main :: IO ()
 main = do
     runTestTTAndExit $ testExpr

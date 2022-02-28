@@ -4,10 +4,10 @@ import Control.Applicative
 
 type Symb = String
 
-infixl 5 :&
-infixl 4 :|
+infixr 5 :&
+infixr 4 :|
 infixr 3 :=>
-infixl 2 :<=>
+infixr 2 :<=>
 
 data Expr = 
     Var Symb | 
@@ -16,6 +16,7 @@ data Expr =
     Expr :=> Expr | 
     Expr :<=> Expr | 
     Not Expr 
+    deriving Eq
 
 
 data PrettyExpr = 
