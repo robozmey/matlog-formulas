@@ -78,11 +78,11 @@ propIsCNFviaDNF e = whenFail ( do
 
 main :: IO ()
 main = do
-    quickCheck $ withMaxSuccess 15  (
+    result <- quickCheckWithResult (stdArgs {maxSuccess = 100, maxSize = 10})  (
         propEqNNF .&&. 
         propEqDNF .&&. 
-        -- propEqCNF .&&.
-        -- propEqCNFtseytin .&&. 
+        propEqCNF .&&.
+        propEqCNFtseytin .&&. 
         propEqCNF1 .&&.
         propEqCNFviaDNF .&&.
         propIsNNF .&&. 
@@ -93,6 +93,7 @@ main = do
         propIsCNFviaDNF .&&.
         propShowRead 
         )
+    putStrLn $ show result
     
 
 
