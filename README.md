@@ -2,9 +2,22 @@
 
 ## HW1
 
+### toCNF as toDNF:
 ```
 stack build
-stack exec hw1
+stack exec hw1-as-dnf
+```
+
+### toCNF reuse toDNF:
+```
+stack build
+stack exec hw1-dnf-reuse
+```
+
+### toCNF via Tseytin:
+```
+stack build
+stack exec hw1-tseytin
 ```
 
 ```

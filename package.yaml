@@ -28,16 +28,34 @@ library:
   source-dirs: src
 
 executables:
-  hw1:
+  hw1-as-dnf: # HW1
     main:                Main.hs
-    source-dirs:         app/hw1
+    source-dirs:         app/hw1/as_dnf
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
     - matlog-formulas
-  hw2:
+  hw1-dnf-reuse:
+    main:                Main.hs
+    source-dirs:         app/hw1/dnf_reuse
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - matlog-formulas
+  hw1-tseytin:
+    main:                Main.hs
+    source-dirs:         app/hw1/tseytin
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - matlog-formulas
+  hw2: # HW2
     main:                Main.hs
     source-dirs:         app/hw2
     ghc-options:

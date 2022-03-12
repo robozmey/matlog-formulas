@@ -11,7 +11,7 @@ main = do
     let expr = read s :: Expr
     let nnf = toNNF expr
     let dnf = toDNF expr
-    let cnf = toCNF expr
+    let cnf = toCNF1 expr
     -- putStrLn $ "original: " ++ (show expr)
     putStrLn $ "NNF: " ++ (show nnf)
     putStrLn $ "DNF: " ++ (show dnf)
